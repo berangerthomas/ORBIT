@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install package with dev dependencies
+        run: uv sync --extra dev
+      - name: Run tests
+        run: uv run pytest -v
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Build package
+        run: uv build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Extract changelog for current version
+        id: changelog
+        run: |
+          # Get version from tag (remove 'v' prefix)
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          # Extract changelog section for this version
+          # Read from CHANGELOG.md, extract content between version headers
+          CHANGELOG=$(sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | sed '$d')
+          
+          # Write to file for multiline output
+          echo "$CHANGELOG" > /tmp/release_notes.md
+          echo "file=/tmp/release_notes.md" >> $GITHUB_OUTPUT
+          
+          # Also output first few lines for preview
+          echo "preview<<EOF" >> $GITHUB_OUTPUT
+          head -20 /tmp/release_notes.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ORBIT v${{ steps.changelog.outputs.version }}
+          body_path: /tmp/release_notes.md
+          files: dist/*
+          draft: false
+          prerelease: ${{ contains(steps.changelog.outputs.version, '-') }}
+          generate_release_notes: false
