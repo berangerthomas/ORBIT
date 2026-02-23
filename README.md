@@ -1,6 +1,6 @@
 # ORBIT
 
-<img src="src/orbit/assets/image/logo.jpg" alt="ORBIT Logo" width="200"/>
+<img src="src/orbit/assets/image/logo.jpg" alt="ORBIT Logo"/>
 
 **O**rganized **R**epositories **B**ased on **I**mages **T**iming — Organize photos into a structured directory tree based on their EXIF metadata.
 
