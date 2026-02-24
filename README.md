@@ -85,6 +85,8 @@ orbit -d /organized/photos --generate-report
 orbit -s /path/to/photos -d /organized/photos -m copy -v
 ```
 
+<img src="src/orbit/assets/image/cli.jpg" alt="cli report"/>
+
 ### As a Python Module
 
 ```python
@@ -226,6 +228,8 @@ Features:
 - Statistics with file counts and sizes
 - Duplicate detection tab (when applicable)
 - Interactive folder navigation
+
+<img src="src/orbit/assets/image/report.jpg" alt="Report page"/>
 
 ### Report Regeneration
 
