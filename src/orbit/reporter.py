@@ -30,7 +30,7 @@ class HtmlReporter:
         self,
         file_mappings: list[tuple[Path, Path]],
         stats: dict,
-        duplicate_result: "DuplicateResult | None" = None,
+        duplicate_result: DuplicateResult | None = None,
         duplicate_csv_path: Path | None = None,
     ) -> Path:
         """
@@ -155,7 +155,7 @@ class HtmlReporter:
 
     def _render_duplicates_table(
         self,
-        duplicate_result: "DuplicateResult",
+        duplicate_result: DuplicateResult,
         duplicate_csv_path: Path | None,
     ) -> str:
         """Render the duplicates table for the second tab."""
@@ -177,8 +177,6 @@ class HtmlReporter:
                 sources_html += f"<a href='file:///{safe_path}' class='source-link' title='{safe_path}'>{html_module.escape(file_path.name)}</a>"
                 if i < len(group.files) - 1:
                     sources_html += "<br>"
-
-            action = "Kept 1st, skipped others" if True else "Copied all with renaming"
 
             rows += f"""
                 <tr>
@@ -222,7 +220,7 @@ class HtmlReporter:
         source: dict,
         dest: dict,
         stats: dict,
-        duplicate_result: "DuplicateResult | None" = None,
+        duplicate_result: DuplicateResult | None = None,
         duplicate_csv_path: Path | None = None,
     ) -> str:
         def s(k: str, default: str = "0") -> str:
@@ -249,7 +247,6 @@ class HtmlReporter:
         duplicate_size = int(stats.get("duplicate_size", 0))
 
         # Check if duplicates tab is needed
-        has_duplicates = duplicate_result and duplicate_result.groups_count > 0
         duplicates_tab_button = ""
         duplicates_tab_content = ""
 
@@ -263,24 +260,6 @@ class HtmlReporter:
                 {self._render_duplicates_table(duplicate_result, duplicate_csv_path)}
             </div>
             """
-
-        # Duplicate stats
-        duplicate_stats = ""
-        if duplicate_result:
-            strategy = stats.get("duplicate_strategy", "N/A")
-            duplicate_stats = f"""
-            <p>Duplicate groups: {duplicate_result.groups_count}</p>
-            <p>Duplicate files: {duplicate_result.total_duplicates}</p>
-            <p>Duplicate size: {format_size(duplicate_size)}</p>
-            <p>Duplicate strategy: {html_module.escape(str(strategy))}</p>
-            """
-
-        # Size stats section
-        size_stats = f"""
-        <p>Total size: {format_size(total_size)}</p>
-        <p>Size to be processed: {format_size(processed_size)}</p>
-        <p>Size skipped: {format_size(skipped_size)}</p>
-        """
 
         return f"""<!DOCTYPE html>
 <html lang="en">
@@ -320,14 +299,34 @@ class HtmlReporter:
         .file a {{ color: #333; text-decoration: none; }}
         .file a:hover {{ text-decoration: underline; }}
         .hidden {{ display: none; }}
-        .stats {{
-            background: #fff;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        .stats-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
         }}
-        .stats p {{ margin: 5px 0; }}
+        .stat-card {{
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,.05);
+            border-left: 4px solid #0055aa;
+        }}
+        .stat-card.secondary {{ border-left-color: #6c757d; }}
+        .stat-card.warning {{ border-left-color: #ffc107; }}
+        .stat-card.success {{ border-left-color: #28a745; }}
+        .stat-label {{
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #666;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }}
+        .stat-value {{
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }}
         
         /* Tabs */
         .tabs {{ margin-bottom: 20px; }}
@@ -408,18 +407,35 @@ class HtmlReporter:
 </head>
 <body>
     <h1>ORBIT Simulation Report</h1>
-    <div class="stats">
-        <h2>Statistics</h2>
-        <p>Total files found: {s("total_files_found")}</p>
-        <p>Total size: {format_size(total_size)}</p>
-        <hr>
-        <p>Files to be processed: {s("processed_files")}</p>
-        <p>Size to be processed: {format_size(processed_size)}</p>
-        <p>Files skipped: {s("skipped_files")}</p>
-        <p>Size skipped: {format_size(skipped_size)}</p>
-        <p>Directories to create: {s("created_directories_count")}</p>
-        <p>Extraction mode: {s("mode", "N/A")}</p>
-        {duplicate_stats}
+    
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Files Found</div>
+            <div class="stat-value">{s("total_files_found")}</div>
+            <div style="font-size: 11px; color: #888; margin-top: 4px;">{format_size(total_size)} total</div>
+        </div>
+        <div class="stat-card success">
+            <div class="stat-label">To Process</div>
+            <div class="stat-value">{s("processed_files")}</div>
+            <div style="font-size: 11px; color: #888; margin-top: 4px;">{format_size(processed_size)}</div>
+        </div>
+        <div class="stat-card secondary">
+            <div class="stat-label">Skipped / Excluded</div>
+            <div class="stat-value">{s("skipped_files")}</div>
+            <div style="font-size: 11px; color: #888; margin-top: 4px;">{format_size(skipped_size)}</div>
+        </div>
+        <div class="stat-card warning">
+            <div class="stat-label">Action Plan</div>
+            <div class="stat-value">{s("created_directories_count")}</div>
+            <div style="font-size: 11px; color: #888; margin-top: 4px;">Dirs to create ({s("mode", "N/A")})</div>
+        </div>
+        {f'''
+        <div class="stat-card warning">
+            <div class="stat-label">Duplicates</div>
+            <div class="stat-value">{duplicate_result.groups_count}</div>
+            <div style="font-size: 11px; color: #888; margin-top: 4px;">{format_size(duplicate_size)} recoverable</div>
+        </div>
+        ''' if duplicate_result else ""}
     </div>
     
     <div class="tabs">
