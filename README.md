@@ -85,7 +85,7 @@ orbit -d /organized/photos --generate-report
 orbit -s /path/to/photos -d /organized/photos -m copy -v
 ```
 
-<img src="src/orbit/assets/image/cli.jpg" alt="cli report"/>
+<img src="src/orbit/assets/image/cli.jpg" width="75%" alt="cli report"/>
 
 ### As a Python Module
 
